@@ -19,7 +19,7 @@ HardwareManager::HardwareManager(const PinsConfig& config) : _config{config} {
     gpioWrite(config.outPower27V, 1);
 
     gpioSetMode(config.duplicateEncZ, PI_INPUT);
-    gpioSetPullUpDown(config.duplicateEncZ, PI_PUD_UP);
+    gpioSetPullUpDown(config.duplicateEncZ, PI_PUD_DOWN);
     gpioSetAlertFuncEx(config.duplicateEncZ, HardwareManager::encoderZ_ISR, this);
 }
 
