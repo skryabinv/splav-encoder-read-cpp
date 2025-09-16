@@ -6,6 +6,7 @@
 #include <stop_token>
 
 struct Channel5Data;
+class HardwareManager;
 
 class MessageSender {
 public:    
@@ -15,11 +16,12 @@ public:
         std::chrono::milliseconds interval = std::chrono::milliseconds{3});
     ~MessageSender();
     // Вызывается из главного потока
-    void start();
+    void start(HardwareManager* manager);
     // Вызывается из главного потока
     void stop();    
 private:    
-    void runImpl(std::stop_token stoken);
+    void runImpl(std::stop_token stoken, HardwareManager* manager);
+    uint16_t controlSum() const;
     struct Impl;
     std::unique_ptr<Impl> _impl;
 };

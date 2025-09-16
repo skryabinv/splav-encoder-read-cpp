@@ -1,0 +1,96 @@
+#include "HardwareManager.h"
+#include <pigpio.h>
+#include <arpa/inet.h>
+
+HardwareManager::HardwareManager(const PinsConfig& config) {
+    gpioSetMode(config.encA, PI_INPUT);
+    gpioSetMode(config.encB, PI_INPUT);
+    gpioSetMode(config.encZ, PI_INPUT);
+
+    gpioSetPullUpDown(config.encA, PI_PUD_UP);
+    gpioSetPullUpDown(config.encB, PI_PUD_UP);
+    gpioSetPullUpDown(config.encZ, PI_PUD_UP);
+
+    gpioSetAlertFuncEx(config.encA, HardwareManager::encoderAB_ISR, this);
+    gpioSetAlertFuncEx(config.encB, HardwareManager::encoderAB_ISR, this);
+    gpioSetAlertFuncEx(config.encZ, HardwareManager::encoderZ_ISR, this);
+}
+
+HardwareManager::~HardwareManager() {
+
+}
+
+void HardwareManager::setModbusData(const ModbusData &data) {
+    {
+        auto lock = std::scoped_lock{_mutex};
+        _modbusData = data;
+    }
+    // Обработка данных
+
+}
+
+void HardwareManager::loadChannel5DataTo(Channel5Data &data) const {
+    auto lock = std::scoped_lock{_mutex};
+    data.roll_angle = getEncoderAngleRadImpl();
+    data.accel_calib_z_70 = std::numbers::pi * _modbusData.angleAdj / 180.0f;    
+    data.bins_state_word = htons(_modbusData.status);    
+}
+
+float HardwareManager::getEncoderAngleRad() const {        
+    auto lock = std::scoped_lock{_mutex};
+    return getEncoderAngleRadImpl();
+}
+
+uint32_t HardwareManager::getEncoderValue() const
+{
+    return _counter.load();
+}
+
+void HardwareManager::encoderAB_ISR(int gpio, int level, uint32_t tick, void *userdata) {
+    static_cast<HardwareManager*>(userdata)->processEncoderStep();
+}
+
+void HardwareManager::encoderZ_ISR(int gpio, int level, uint32_t tick, void * userdata) {
+    if (level == 0) {  // спад или низкий уровень        
+        // Опционально: сбросить счётчик или установить начальное положение
+        static_cast<HardwareManager*>(userdata)->_counter.store(0);  // например, считаем, что это 0°
+    }
+}
+
+void HardwareManager::processEncoderStep() {
+    // Читаем текущие состояния пинов
+    int a = gpioRead(_config.encA);
+    int b = gpioRead(_config.encB);
+
+    // Кодируем состояние: A << 1 | B
+    int current = (a << 1) | b;
+
+    // Предыдущее закодированное состояние
+    uint8_t prev = _lastEncoded.load();
+
+    // Собираем 4-битное значение: предыдущее + текущее
+    int sum = (prev << 2) | current;
+
+    // Таблица переходов: определяет направление
+    // https://en.wikipedia.org/wiki/Quadrature_encoding
+    static const int8_t transitions[] = {
+         0,  +1,  -1,   0,
+        -1,   0,   0,  +1,
+        +1,   0,   0,  -1,
+         0,  -1,  +1,   0
+    };
+
+    int8_t delta = transitions[sum];
+    if (delta != 0) {
+        _counter.fetch_add(delta, std::memory_order_relaxed);
+    }
+
+    // Сохраняем текущее состояние
+    _lastEncoded.store(current, std::memory_order_relaxed);
+}
+
+float HardwareManager::getEncoderAngleRadImpl() const {
+    auto signedCounter = static_cast<int32_t>(_counter.load());    
+    auto offsetRad = std::numbers::pi * _modbusData.angleOffset / 180.0f;    
+    return offsetRad + 2.0f * std::numbers::pi * signedCounter / _modbusData.posCountMax;  
+}

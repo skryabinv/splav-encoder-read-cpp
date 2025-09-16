@@ -3,6 +3,8 @@
 #include <string>
 #include <memory>
 
+class HardwareManager;
+
 class ModbusServer {
 public:
     static constexpr auto PORT = 1502;
@@ -12,11 +14,11 @@ public:
 
     ModbusServer(const std::string& ip, int port, int slaveId);
     ~ModbusServer();
-    void start();
+    void start(HardwareManager* manager);
     void stop();
 private:    
-    void processRequest(const uint8_t* query, size_t querySize);
-    void runImpl();
+    void processRequest(const uint8_t* query, size_t querySize, HardwareManager* manager);
+    void runImpl(HardwareManager* manager);
     struct Impl;
     std::unique_ptr<Impl> _impl;
 };

@@ -11,13 +11,18 @@ public:
 
     // Конструктор из сырого указателя и размера
     ModbusRegistersView(int baseAddress, uint16_t* data, int size)
-        : _baseAddress{baseAddress}, _data(data), _size(size > 0 ? size : 0) {}
+        : _baseAddress{baseAddress}, _data(data), _size(size > 0 ? size : 0) {}    
 
-    // Чтение uint16_t по адресу
+    // Чтение uint16_t по адресу (сохраняет порядок байт как в протоколе)
     uint16_t readUint16(size_t address) const {
         auto offset = address - _baseAddress;
         check_bounds(offset, 1);
         return _data[offset];
+    }
+
+    // Изменяет порядок байт на системный
+    uint16_t readUint16Litle(size_t address) const {        
+        return __builtin_bswap16(readUint16(address));
     }
 
     // Запись uint16_t по адресу
@@ -31,6 +36,12 @@ public:
     int16_t readInt16(size_t address) const {
         return static_cast<int16_t>(readUint16(address));
     }
+
+    // Изменяет порядок байт на системный
+    int16_t readInt16Litle(size_t address) const {        
+        return static_cast<int16_t>(readUint16Litle(address));
+    }
+
 
     // Запись int16_t по адресу
     void writeInt16(size_t address, int16_t value) {

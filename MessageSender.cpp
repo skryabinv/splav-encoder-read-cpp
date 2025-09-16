@@ -1,5 +1,6 @@
 #include "MessageSender.h"
 #include "Channel5Data.h"
+#include "HardwareManager.h"
 
 #include <unistd.h>
 #include <fcntl.h>
@@ -60,10 +61,14 @@ MessageSender::~MessageSender() {
     stop();
 }
 
-void MessageSender::start() {
+void MessageSender::start(HardwareManager* manager) {
+    if(manager == nullptr) {
+        std::cerr << "Менеджер оборудования не создан" << std::endl;
+        return;
+    }
     stop();    
     std::cout << "Запуск потока последовательного порта " << _impl->serial << std::endl;
-    _impl->_thread = std::jthread(&MessageSender::runImpl, this);
+    _impl->_thread = std::jthread(&MessageSender::runImpl, this, manager);
 }
 
 void MessageSender::stop() {
@@ -73,12 +78,12 @@ void MessageSender::stop() {
     }
 }
 
-void MessageSender::runImpl(std::stop_token stoken) {    
+void MessageSender::runImpl(std::stop_token stoken, HardwareManager* manager) {    
     while(!stoken.stop_requested()) {            
-        auto t1 = std::chrono::steady_clock::now();  
-        // Обновить данные
-        // Высчитать crc      
-        auto written = write(_impl->sfd, &_impl->data, sizeof(_impl->data));
+        auto t1 = std::chrono::steady_clock::now();          
+        manager->loadChannel5DataTo(_impl->data.data);        
+        _impl->data.csum = controlSum();
+        auto written = write(_impl->sfd, &_impl->data, sizeof(_impl->data));        
         if(written != sizeof(_impl->data)) {
             std::cerr << "Ошибка записи в последовательный порт: " << written << std::endl;
         }
@@ -90,4 +95,14 @@ void MessageSender::runImpl(std::stop_token stoken) {
             std::cerr << "Превышено максимальное время отправки" << std::endl;
         }
     }    
+}
+
+uint16_t MessageSender::controlSum() const {
+    constexpr auto size = sizeof(Channel5Data) + 1;
+    auto ptr = reinterpret_cast<const uint8_t*>(&_impl->data);
+    uint16_t sum = 0;
+    for(int i = 0; i < size; i++) {
+        sum += ptr[i];
+    }
+    return 0xFF - (0xFF & sum);    
 }

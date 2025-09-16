@@ -10,7 +10,8 @@ add_executable(splav-encoder-read-cpp main.cpp
     Channel5Data.h
     MessageSender.h MessageSender.cpp
     ModbusServer.h ModbusServer.cpp
-    ModbusRegistersView.h)
+    ModbusRegistersView.h
+    HardwareManager.h HardwareManager.cpp)
 
 target_include_directories(splav-encoder-read-cpp PRIVATE ${LIBMODBUS_INCLUDE_DIRS})
 target_link_libraries(splav-encoder-read-cpp ${LIBMODBUS_LIBRARIES})

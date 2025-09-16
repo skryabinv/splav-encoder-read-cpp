@@ -6,6 +6,7 @@
 #include <cstring>
 
 #include "ModbusRegistersView.h"
+#include "HardwareManager.h"
 
 extern "C" {
     #include <modbus/modbus.h>
@@ -82,11 +83,17 @@ ModbusServer::ModbusServer(const std::string &ip, int port, int slaveId) {
     }        
 }
 
-ModbusServer::~ModbusServer() = default;
+ModbusServer::~ModbusServer() {
+    stop();
+}
 
-void ModbusServer::start() {    
+void ModbusServer::start(HardwareManager* manager) {    
+    if(manager == nullptr) {
+        std::cerr << "Не инициализирован объект менеджера оборудования" << std::endl;
+    }
+    stop();
     _impl->_thread = std::jthread{
-         [this]{ runImpl(); }
+         [this, manager]{ runImpl(manager); }
     };
 }
 
@@ -94,30 +101,38 @@ void ModbusServer::stop() {
     _impl->stop = true;
 }
 
-void ModbusServer::processRequest(const uint8_t * query, size_t querySize) {
-    auto functionCode = query[7];
-    if(functionCode != MODBUS_FC_WRITE_MULTIPLE_REGISTERS) {
-        return;
-    }    
+void ModbusServer::processRequest(const uint8_t * query, size_t querySize, HardwareManager* manager) {
+    auto functionCode = query[7];        
     uint16_t startAddress = (query[8] << 8) | query[9];               
-    uint16_t count = (query[10] << 8) | query[11];
-    
-    auto inputRegs = ModbusRegistersView{1000, _impl->modbusMap->tab_input_registers, _impl->modbusMap->nb_input_registers};
-    auto holdingRegs = ModbusRegistersView{2000, _impl->modbusMap->tab_registers, _impl->modbusMap->nb_registers};
+    uint16_t count = (query[10] << 8) | query[11];          
+    if(startAddress != 2000 || startAddress != 1000 || count != 20) {
+        std::cerr << "Modbus неполный пакет регистров" << std::endl;
+    }
     auto toRadians = [](float degrees) {
-        return std::numbers::pi * degrees / 360.0;
-    };   
-    // Обновление входных регистров
-    if(startAddress == 2000 && count == 20) {
+        return std::numbers::pi * degrees / 180.0;
+    };
+    // Обновление входных регистров по данным из holdingRegisters
+    if(functionCode == MODBUS_FC_WRITE_MULTIPLE_REGISTERS && startAddress == 2000 && count == 20) {
+        auto inputRegs = ModbusRegistersView{1000, _impl->modbusMap->tab_input_registers, _impl->modbusMap->nb_input_registers};
+        auto holdingRegs = ModbusRegistersView{2000, _impl->modbusMap->tab_registers, _impl->modbusMap->nb_registers};         
         inputRegs.writeFloat(FBK_Angle_Adj, toRadians(holdingRegs.readFloat(SP_Angle_Adj)));        
         inputRegs.writeUint16(FBK_Pos_Count_Max, holdingRegs.readUint16(SP_Pos_Count_Max));        
         inputRegs.writeUint16(FBK_Power_27_V, holdingRegs.readUint16(SP_Power_27_V));                
-    } else {
-        std::cerr << "Не полный пакет регистров" << std::endl;
+        // Обновить структуру данных в manager
+        ModbusData data;
+        data.angleAdj = holdingRegs.readFloat(SP_Angle_Adj);
+        data.angleOffset = holdingRegs.readFloat(SP_Angle_Offset);
+        data.posCountMax = holdingRegs.readUint16Litle(SP_Pos_Count_Max);        
+        data.power27V = holdingRegs.readUint16Litle(SP_Power_27_V);
+        data.status = holdingRegs.readUint16Litle(SP_Status);
+        manager->setModbusData(data);
+    } 
+    if(functionCode == MODBUS_FC_READ_INPUT_REGISTERS || functionCode == MODBUS_FC_READ_HOLDING_REGISTERS) {
+        // Обновить счетчик угла
     }
 }
 
-void ModbusServer::runImpl() {
+void ModbusServer::runImpl(HardwareManager* manager) {
     _impl->stop = false;    
     constexpr auto connections = 1;
     auto serverSocket = modbus_tcp_listen(_impl->modbusCtx, connections);
@@ -144,7 +159,9 @@ void ModbusServer::runImpl() {
                 std::cerr << "Reply failed: " << modbus_strerror(errno) << "\n";
                 break;
             }
-            processRequest(query, request_length);    
+            processRequest(query, request_length, manager);    
+            // Сформировать структуру ModbusData
+            ModbusData modbusData;            
         }
         close(clientSocket);        
     }        
