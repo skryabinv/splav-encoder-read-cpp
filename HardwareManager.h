@@ -15,6 +15,7 @@ struct PinsConfig {
     uint8_t encZ{27};
 
     uint8_t outPower27V{25};
+    uint8_t duplicateEncZ{13};
 };
 
 struct ModbusData {
@@ -35,7 +36,7 @@ public:
     void loadChannel5DataTo(Channel5Data& data) const;  
     // Получить текущий угол энкодера в радианнах
     float getEncoderAngleRad() const;
-    uint32_t getEncoderValue() const;
+    uint32_t getEncoderCounter() const;
 private:
     static void encoderAB_ISR(int gpio, int level, uint32_t tick, void *userdata);    
     static void encoderZ_ISR(int gpio, int level, uint32_t tick, void * userdata);

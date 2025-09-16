@@ -11,6 +11,21 @@
 #include <stdexcept>
 #include <chrono>
 
+// Сконфигурировать вызывающий поток как реал-тайм
+static bool configure_realtime(pthread_t thread_id) {
+    sched_param sch = {1};
+    if (pthread_setschedparam(thread_id, SCHED_FIFO, &sch)) {
+        return false;
+    }
+    cpu_set_t cpu_set;
+    CPU_ZERO(&cpu_set);
+    CPU_SET(3, &cpu_set);
+    if (pthread_setaffinity_np(thread_id, sizeof(cpu_set), &cpu_set)) {
+        return false;
+    }
+    return true;
+}
+
 
 struct MessageSender::Impl {
     // Порт
@@ -20,7 +35,7 @@ struct MessageSender::Impl {
     // Дескриптор
     int sfd{-1};
     // Интервал отправки
-    std::chrono::milliseconds interval;
+    std::chrono::microseconds interval;
     // Функция для обновления данных
     // Поток
     std::jthread _thread;    
@@ -31,7 +46,7 @@ struct MessageSender::Impl {
     }
 };
 
-MessageSender::MessageSender(const std::string &serial, std::chrono::milliseconds interval) {    
+MessageSender::MessageSender(const std::string &serial, std::chrono::microseconds interval) {    
     _impl = std::make_unique<Impl>();
     _impl->serial = serial;
     _impl->interval = interval;    
@@ -79,6 +94,7 @@ void MessageSender::stop() {
 }
 
 void MessageSender::runImpl(std::stop_token stoken, HardwareManager* manager) {    
+    configure_realtime(pthread_self());
     while(!stoken.stop_requested()) {            
         auto t1 = std::chrono::steady_clock::now();          
         manager->loadChannel5DataTo(_impl->data.data);        

@@ -13,7 +13,7 @@ public:
     // TODO: Объект для обновления данных
     // Функция обновления данных    
     MessageSender(const std::string& serial,
-        std::chrono::milliseconds interval = std::chrono::milliseconds{3});
+        std::chrono::microseconds interval = std::chrono::microseconds{2800});
     ~MessageSender();
     // Вызывается из главного потока
     void start(HardwareManager* manager);

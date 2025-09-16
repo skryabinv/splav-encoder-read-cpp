@@ -2,7 +2,7 @@
 #include <pigpio.h>
 #include <arpa/inet.h>
 
-HardwareManager::HardwareManager(const PinsConfig& config) {
+HardwareManager::HardwareManager(const PinsConfig& config) : _config{config} {
     gpioSetMode(config.encA, PI_INPUT);
     gpioSetMode(config.encB, PI_INPUT);
     gpioSetMode(config.encZ, PI_INPUT);
@@ -14,19 +14,24 @@ HardwareManager::HardwareManager(const PinsConfig& config) {
     gpioSetAlertFuncEx(config.encA, HardwareManager::encoderAB_ISR, this);
     gpioSetAlertFuncEx(config.encB, HardwareManager::encoderAB_ISR, this);
     gpioSetAlertFuncEx(config.encZ, HardwareManager::encoderZ_ISR, this);
+
+    gpioSetMode(config.outPower27V, PI_OUTPUT);
+    gpioWrite(config.outPower27V, 1);
+
+    gpioSetMode(config.duplicateEncZ, PI_INPUT);
+    gpioSetPullUpDown(config.duplicateEncZ, PI_PUD_UP);
+    gpioSetAlertFuncEx(config.duplicateEncZ, HardwareManager::encoderZ_ISR, this);
 }
 
-HardwareManager::~HardwareManager() {
-
-}
+HardwareManager::~HardwareManager() = default;
 
 void HardwareManager::setModbusData(const ModbusData &data) {
-    {
+    auto power27V = [this, &data]{
         auto lock = std::scoped_lock{_mutex};
         _modbusData = data;
-    }
-    // Обработка данных
-
+        return data.power27V;
+    }();    
+    gpioWrite(_config.outPower27V, power27V == 0 ? 0 : 1);
 }
 
 void HardwareManager::loadChannel5DataTo(Channel5Data &data) const {
@@ -41,9 +46,8 @@ float HardwareManager::getEncoderAngleRad() const {
     return getEncoderAngleRadImpl();
 }
 
-uint32_t HardwareManager::getEncoderValue() const
-{
-    return _counter.load();
+uint32_t HardwareManager::getEncoderCounter() const {
+    return _counter.load(std::memory_order_relaxed);
 }
 
 void HardwareManager::encoderAB_ISR(int gpio, int level, uint32_t tick, void *userdata) {
@@ -51,9 +55,9 @@ void HardwareManager::encoderAB_ISR(int gpio, int level, uint32_t tick, void *us
 }
 
 void HardwareManager::encoderZ_ISR(int gpio, int level, uint32_t tick, void * userdata) {
-    if (level == 0) {  // спад или низкий уровень        
-        // Опционально: сбросить счётчик или установить начальное положение
-        static_cast<HardwareManager*>(userdata)->_counter.store(0);  // например, считаем, что это 0°
+    if (level == 1) {  
+        // Change to High
+        static_cast<HardwareManager*>(userdata)->_counter.store(0);  
     }
 }
 
@@ -90,7 +94,7 @@ void HardwareManager::processEncoderStep() {
 }
 
 float HardwareManager::getEncoderAngleRadImpl() const {
-    auto signedCounter = static_cast<int32_t>(_counter.load());    
+    auto signedCounter = static_cast<int32_t>(getEncoderCounter());    
     auto offsetRad = std::numbers::pi * _modbusData.angleOffset / 180.0f;    
     return offsetRad + 2.0f * std::numbers::pi * signedCounter / _modbusData.posCountMax;  
 }

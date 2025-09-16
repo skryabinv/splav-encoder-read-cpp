@@ -21,16 +21,14 @@ int main()
         std::cerr << "Ошибка инициализации pigpio!\n";
         return 1;
     }
-    HardwareManager hm{{}};
+    HardwareManager hardware{{}};
     ModbusServer modbus{IP, PORT, SLAVE_ID};
-    modbus.start(&hm);
+    modbus.start(&hardware);
     MessageSender sender("/dev/serial0");
-    sender.start(&hm);
+    sender.start(&hardware);
     signal(SIGINT, [](int) { running = false; });
-    while (running)
-    {        
-        std::this_thread::sleep_for(std::chrono::milliseconds{100});
-        std::cout << hm.getEncoderAngleRad() << std::endl;                
+    while (running) {        
+        std::this_thread::sleep_for(std::chrono::milliseconds{1000});        
     }    
     gpioTerminate();
     return 0;

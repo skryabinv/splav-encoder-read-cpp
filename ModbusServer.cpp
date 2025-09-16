@@ -104,17 +104,17 @@ void ModbusServer::stop() {
 void ModbusServer::processRequest(const uint8_t * query, size_t querySize, HardwareManager* manager) {
     auto functionCode = query[7];        
     uint16_t startAddress = (query[8] << 8) | query[9];               
-    uint16_t count = (query[10] << 8) | query[11];          
-    if(startAddress != 2000 || startAddress != 1000 || count != 20) {
-        std::cerr << "Modbus неполный пакет регистров" << std::endl;
-    }
+    uint16_t count = (query[10] << 8) | query[11];              
     auto toRadians = [](float degrees) {
         return std::numbers::pi * degrees / 180.0;
     };
-    // Обновление входных регистров по данным из holdingRegisters
-    if(functionCode == MODBUS_FC_WRITE_MULTIPLE_REGISTERS && startAddress == 2000 && count == 20) {
-        auto inputRegs = ModbusRegistersView{1000, _impl->modbusMap->tab_input_registers, _impl->modbusMap->nb_input_registers};
-        auto holdingRegs = ModbusRegistersView{2000, _impl->modbusMap->tab_registers, _impl->modbusMap->nb_registers};         
+    auto toDegrees = [](float radians) {
+        return radians / std::numbers::pi * 180.0;
+    };
+    auto inputRegs = ModbusRegistersView{1000, _impl->modbusMap->tab_input_registers, _impl->modbusMap->nb_input_registers};
+    auto holdingRegs = ModbusRegistersView{2000, _impl->modbusMap->tab_registers, _impl->modbusMap->nb_registers};         
+    if(functionCode == MODBUS_FC_WRITE_MULTIPLE_REGISTERS && startAddress == 2000) {
+        // Обновление входных регистров по данным из holdingRegisters
         inputRegs.writeFloat(FBK_Angle_Adj, toRadians(holdingRegs.readFloat(SP_Angle_Adj)));        
         inputRegs.writeUint16(FBK_Pos_Count_Max, holdingRegs.readUint16(SP_Pos_Count_Max));        
         inputRegs.writeUint16(FBK_Power_27_V, holdingRegs.readUint16(SP_Power_27_V));                
@@ -122,13 +122,19 @@ void ModbusServer::processRequest(const uint8_t * query, size_t querySize, Hardw
         ModbusData data;
         data.angleAdj = holdingRegs.readFloat(SP_Angle_Adj);
         data.angleOffset = holdingRegs.readFloat(SP_Angle_Offset);
-        data.posCountMax = holdingRegs.readUint16Litle(SP_Pos_Count_Max);        
+        // Нулевое значение не должно быть
+        if(auto posCountMax = holdingRegs.readUint16Litle(SP_Pos_Count_Max); posCountMax != 0) {
+            data.posCountMax = posCountMax;
+        }               
         data.power27V = holdingRegs.readUint16Litle(SP_Power_27_V);
         data.status = holdingRegs.readUint16Litle(SP_Status);
         manager->setModbusData(data);
     } 
     if(functionCode == MODBUS_FC_READ_INPUT_REGISTERS || functionCode == MODBUS_FC_READ_HOLDING_REGISTERS) {
         // Обновить счетчик угла
+        auto floatRad = manager->getEncoderAngleRad();
+        inputRegs.writeFloat(FBK_Angle_Roll, floatRad);       
+        inputRegs.writeFloat(FBK_Angle, toDegrees(floatRad));
     }
 }
 
