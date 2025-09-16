@@ -10,7 +10,7 @@ public:
     static constexpr auto PORT = 1502;
     static constexpr auto SLAVE_ID = 255;
     static constexpr auto REGISTERS_COUNT = 32;
-    static constexpr auto IP = "192.168.20.56";    
+    static constexpr auto IP = "192.168.199.56";    
 
     ModbusServer(const std::string& ip, int port, int slaveId);
     ~ModbusServer();

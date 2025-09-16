@@ -7,11 +7,6 @@
 #include "MessageSender.h"
 #include "HardwareManager.h"
 
-constexpr int PORT = 1502;
-constexpr int SLAVE_ID = 255;
-constexpr int REGISTERS_COUNT = 32;
-constexpr auto IP = "192.168.20.56";
-
 volatile bool running{true};
 
 int main()
@@ -22,7 +17,7 @@ int main()
         return 1;
     }
     HardwareManager hardware{{}};
-    ModbusServer modbus{IP, PORT, SLAVE_ID};
+    ModbusServer modbus{ModbusServer::IP, ModbusServer::PORT, ModbusServer::SLAVE_ID};
     modbus.start(&hardware);
     MessageSender sender("/dev/serial0");
     sender.start(&hardware);
