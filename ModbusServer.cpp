@@ -76,11 +76,11 @@ ModbusServer::ModbusServer(const std::string &ip, int port, int slaveId) {
     _impl->slaveId = slaveId;
     _impl->modbusCtx = modbus_new_tcp(_impl->ip.data(), _impl->port);
     if(!_impl->modbusCtx) {        
-        throw new std::runtime_error("Can't create modbus context");
+        throw std::runtime_error("Не удалось создать modbus контекст");
     }    
     _impl->modbusMap = modbus_mapping_new_start_address(0, 0, 0, 0, 2000, 20, 1000, 20);
     if(!_impl->modbusMap) {        
-        throw new std::runtime_error("Can't create modbus context");
+        throw std::runtime_error("Не удалось создать карту регистров modbus");
     }        
 }
 
@@ -91,6 +91,7 @@ ModbusServer::~ModbusServer() {
 void ModbusServer::start(HardwareManager* manager) {    
     if(manager == nullptr) {
         std::cerr << "Не инициализирован объект менеджера оборудования" << std::endl;
+        return;
     }
     stop();
     _impl->thread = std::jthread{
@@ -149,21 +150,21 @@ void ModbusServer::runImpl(HardwareManager* manager) {
     if (serverSocket == -1) {
         std::cerr << "Failed to listen: " << modbus_strerror(errno)  << std::endl;
         return;
-    }    
+    }   
+    // Перевод сокета в неблокирующий режим и настройка таймаута           
+    auto flags = fcntl(serverSocket, F_GETFL, 0);     
+    fcntl(serverSocket, F_SETFL, flags | O_NONBLOCK);              
     while(!_impl->stop) {
-        std::cout << "Waiting for connection...\n";        
-        // Перевод сокета в неблокирующий режим и настройка таймаута          
+        std::cout << _impl->ip << ": ожидание подключения...\n";                
         fd_set readfds;
         FD_ZERO(&readfds);
-        FD_SET(serverSocket, &readfds);                 
-        auto flags = fcntl(serverSocket, F_GETFL, 0);     
-        fcntl(serverSocket, F_SETFL, flags | O_NONBLOCK);          
-        auto timeout = timeval{.tv_sec = 5, .tv_usec = 0};         
+        FD_SET(serverSocket, &readfds);                    
         // Функция не прервется по сигналу так как сигнал доставляется главному потоку,
         // требуется выждать таймаут до завершения
+        auto timeout = timeval{.tv_sec = 5, .tv_usec = 0};         
         auto result = select(serverSocket + 1, &readfds, NULL, NULL, &timeout);
         if (result == -1) {            
-            std::cerr << "Select error: " << strerror(errno) << "\n";
+            std::cerr << "Ошибка вызова select: " << strerror(errno) << "\n";
             break;
         }
         if(result == 0 || !FD_ISSET(serverSocket, &readfds)) {
@@ -178,17 +179,17 @@ void ModbusServer::runImpl(HardwareManager* manager) {
             }       
             break;
         }
-        std::cout << "Client connected" << std::endl;        
+        std::cout << "Соединение установлено" << std::endl;        
         while (!_impl->stop) {
             uint8_t query[MODBUS_TCP_MAX_ADU_LENGTH];
             int request_length = modbus_receive(_impl->modbusCtx, query);
             if (request_length == -1) {
-                std::cerr << "Receive failed, closing connection."  << std::endl;                            
+                std::cerr << "Ошибка приема, соединение закрывается"  << std::endl;                            
                 break;
             }               
             // Обрабатываем запрос (чтение/запись регистров)
             if (modbus_reply(_impl->modbusCtx, query, request_length, _impl->modbusMap) == -1) {                
-                std::cerr << "Reply failed: " << modbus_strerror(errno) <<  std::endl;
+                std::cerr << "Ошибка отправки: " << modbus_strerror(errno) <<  std::endl;
                 break;
             }
             processRequest(query, request_length, manager);              
