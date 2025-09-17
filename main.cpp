@@ -21,7 +21,9 @@ int main()
     modbus.start(&hardware);
     MessageSender sender("/dev/serial0");
     sender.start(&hardware);
-    signal(SIGINT, [](int) { running = false; });
+    auto sigHandler = [](int) { running = false; };
+    signal(SIGINT, sigHandler);
+    signal(SIGTERM, sigHandler);
     while (running) {        
         std::this_thread::sleep_for(std::chrono::milliseconds{1000});                   
     }    
