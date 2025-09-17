@@ -38,9 +38,10 @@ public:
     float getEncoderAngleRad() const;
     uint32_t getEncoderCounter() const;
 private:
-    static void encoderAB_ISR(int gpio, int level, uint32_t tick, void *userdata);    
+    static void encoderA_ISR(int gpio, int level, uint32_t tick, void *userdata);    
+    static void encoderB_ISR(int gpio, int level, uint32_t tick, void *userdata);    
     static void encoderZ_ISR(int gpio, int level, uint32_t tick, void * userdata);
-    void processEncoderStep();
+    void processEncoderStep(uint8_t a, uint8_t b);
     // Без блокировки
     float getEncoderAngleRadImpl() const;
     PinsConfig _config;
