@@ -4,6 +4,7 @@
 #include <iostream>
 #include <thread>
 #include <cstring>
+#include <fcntl.h>
 
 #include "ModbusRegistersView.h"
 #include "HardwareManager.h"
@@ -60,7 +61,7 @@ struct ModbusServer::Impl {
     modbus_t* modbusCtx{};
     modbus_mapping_t* modbusMap{};
     std::atomic_bool stop{true};    
-    std::jthread _thread;
+    std::jthread thread;
     ~Impl() {        
         modbus_mapping_free(modbusMap);
         modbus_close(modbusCtx);
@@ -92,13 +93,16 @@ void ModbusServer::start(HardwareManager* manager) {
         std::cerr << "Не инициализирован объект менеджера оборудования" << std::endl;
     }
     stop();
-    _impl->_thread = std::jthread{
+    _impl->thread = std::jthread{
          [this, manager]{ runImpl(manager); }
     };
 }
 
 void ModbusServer::stop() {
     _impl->stop = true;
+    if(_impl->thread.joinable()) {
+        _impl->thread.join();
+    }
 }
 
 void ModbusServer::processRequest(const uint8_t * query, size_t querySize, HardwareManager* manager) {
@@ -143,34 +147,54 @@ void ModbusServer::runImpl(HardwareManager* manager) {
     constexpr auto connections = 1;
     auto serverSocket = modbus_tcp_listen(_impl->modbusCtx, connections);
     if (serverSocket == -1) {
-        std::cerr << "Failed to listen: " << modbus_strerror(errno) << "\n";
+        std::cerr << "Failed to listen: " << modbus_strerror(errno)  << std::endl;
         return;
-    }
+    }    
     while(!_impl->stop) {
-        std::cout << "Waiting for connection...\n";
-        auto clientSocket = modbus_tcp_accept(_impl->modbusCtx, &serverSocket);
-        if (clientSocket == -1) {            
+        std::cout << "Waiting for connection...\n";        
+        // Перевод сокета в неблокирующий режим и настройка таймаута          
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(serverSocket, &readfds);                 
+        auto flags = fcntl(serverSocket, F_GETFL, 0);     
+        fcntl(serverSocket, F_SETFL, flags | O_NONBLOCK);          
+        auto timeout = timeval{.tv_sec = 5, .tv_usec = 0};         
+        // Функция не прервется по сигналу так как сигнал доставляется главному потоку,
+        // требуется выждать таймаут до завершения
+        auto result = select(serverSocket + 1, &readfds, NULL, NULL, &timeout);
+        if (result == -1) {            
+            std::cerr << "Select error: " << strerror(errno) << "\n";
             break;
         }
-        std::cout << "Client connected.\n";
+        if(result == 0 || !FD_ISSET(serverSocket, &readfds)) {
+            // Таймаут прошел, никто не подключен
+            continue;
+        }
+        // Получаем подключенное соединение
+        auto clientSocket = modbus_tcp_accept(_impl->modbusCtx, &serverSocket);
+        if (clientSocket == -1) {     
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                continue; // Нет готовых подключений
+            }       
+            break;
+        }
+        std::cout << "Client connected" << std::endl;        
         while (!_impl->stop) {
             uint8_t query[MODBUS_TCP_MAX_ADU_LENGTH];
             int request_length = modbus_receive(_impl->modbusCtx, query);
             if (request_length == -1) {
-                std::cerr << "Receive failed, closing connection.\n";                            
+                std::cerr << "Receive failed, closing connection."  << std::endl;                            
                 break;
             }               
             // Обрабатываем запрос (чтение/запись регистров)
             if (modbus_reply(_impl->modbusCtx, query, request_length, _impl->modbusMap) == -1) {                
-                std::cerr << "Reply failed: " << modbus_strerror(errno) << "\n";
+                std::cerr << "Reply failed: " << modbus_strerror(errno) <<  std::endl;
                 break;
             }
-            processRequest(query, request_length, manager);    
-            // Сформировать структуру ModbusData
-            ModbusData modbusData;            
+            processRequest(query, request_length, manager);              
         }
+        // Закрываем соединение
         close(clientSocket);        
     }        
-    close(serverSocket);
-    
+    close(serverSocket);    
 }
