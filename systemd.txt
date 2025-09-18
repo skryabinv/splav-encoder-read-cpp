@@ -1,0 +1,24 @@
+sudo nano /etc/systemd/system/splav-encoder-read.service
+
+[Unit]
+Description=Encoder Read (Modbus, Uart)
+After=network-online.target
+
+[Service]
+User=user
+Group=user
+WorkingDirectory=/home/user/splav-encoder-read-cpp/build
+ExecStart=/home/user/splav-encoder-read-cpp/build/splav-encoder-read-cpp
+Restart=always
+RestartSec=2
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+
+# Управление
+# systemctl start|stop|restart myapp
+
+# Логи
+# journalctl -u myapp -e -f
