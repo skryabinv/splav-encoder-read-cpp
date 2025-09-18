@@ -18,6 +18,7 @@ struct PinsConfig {
     uint8_t duplicateEncZ{13};
 };
 
+// Здесь все в системном порядке байтов
 struct ModbusData {
     float angleOffset{};
     float angleAdj{};
@@ -37,6 +38,7 @@ public:
     // Получить текущий угол энкодера в радианнах
     float getEncoderAngleRad() const;
     uint32_t getEncoderCounter() const;
+    ModbusData getModbusData() const;
 private:
     static void encoderA_ISR(int gpio, int level, uint32_t tick, void *userdata);    
     static void encoderB_ISR(int gpio, int level, uint32_t tick, void *userdata);    

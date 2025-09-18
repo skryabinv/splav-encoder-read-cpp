@@ -51,6 +51,11 @@ uint32_t HardwareManager::getEncoderCounter() const {
     return _counter.load(std::memory_order_relaxed);
 }
 
+ModbusData HardwareManager::getModbusData() const {
+    auto lock = std::scoped_lock{_mutex};
+    return _modbusData;
+}
+
 void HardwareManager::encoderA_ISR(int gpio, int level, uint32_t tick, void *userdata) {
     auto manager = static_cast<HardwareManager*>(userdata);    
     int b = (manager->_lastEncoded.load() & 1); 
