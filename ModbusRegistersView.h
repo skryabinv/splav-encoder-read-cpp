@@ -5,6 +5,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <algorithm>
+#include <arpa/inet.h>
 
 class ModbusRegistersView {
 public:   
@@ -22,7 +23,7 @@ public:
 
     // Изменяет порядок байт на системный
     uint16_t readUint16Litle(size_t address) const {        
-        return __builtin_bswap16(readUint16(address));
+        return ntohs(readUint16(address));
     }
 
     // Запись uint16_t по адресу
@@ -30,6 +31,13 @@ public:
         auto offset = address - _baseAddress;
         check_bounds(offset, 1);
         _data[offset] = value;
+    }
+
+    // Запись uint16_t по адресу
+    void writeUint16Litle(size_t address, uint16_t value) {
+        auto offset = address - _baseAddress;
+        check_bounds(offset, 1);
+        _data[offset] = htons(value);
     }
 
     // Чтение int16_t по адресу
@@ -42,6 +50,11 @@ public:
         return static_cast<int16_t>(readUint16Litle(address));
     }
 
+    // Запись int16_t по адресу
+    void writeInt16Litle(size_t address, int16_t value) {
+        writeUint16Litle(address, static_cast<uint16_t>(value));
+    }
+
 
     // Запись int16_t по адресу
     void writeInt16(size_t address, int16_t value) {
@@ -52,7 +65,9 @@ public:
     float readFloat(size_t address) const {
         auto offset = address - _baseAddress;
         check_bounds(offset, 2);
-        uint32_t combined = (static_cast<uint32_t>(_data[offset]) << 16) | _data[offset + 1];
+        auto hi = (_data[offset]);
+        auto lo = (_data[offset + 1]);
+        uint32_t combined = static_cast<uint32_t>(hi << 16) | lo;
         float result;
         std::memcpy(&result, &combined, sizeof(result));
         return result;
@@ -64,8 +79,8 @@ public:
         check_bounds(offset, 2);
         uint32_t bits;
         std::memcpy(&bits, &value, sizeof(bits));
-        _data[offset]     = static_cast<uint16_t>((bits >> 16) & 0xFFFF);
-        _data[offset + 1] = static_cast<uint16_t>(bits & 0xFFFF);
+        _data[offset]     = (static_cast<uint16_t>((bits) >> 16) & 0xFFFF);
+        _data[offset + 1] = (static_cast<uint16_t>(bits & 0xFFFF));
     }   
 
     // Получить размер

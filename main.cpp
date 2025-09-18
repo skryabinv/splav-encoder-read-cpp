@@ -25,7 +25,7 @@ int main()
     signal(SIGINT, sigHandler);
     signal(SIGTERM, sigHandler);
     while (running) {        
-        std::this_thread::sleep_for(std::chrono::milliseconds{1000});                   
+        std::this_thread::sleep_for(std::chrono::milliseconds{1000});                  
     }    
     gpioTerminate();
     return 0;

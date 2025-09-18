@@ -37,6 +37,7 @@ public:
     void loadChannel5DataTo(Channel5Data& data) const;  
     // Получить текущий угол энкодера в радианнах
     float getEncoderAngleRad() const;
+    uint16_t getAbsEncoderCounter() const;
     uint32_t getEncoderCounter() const;
     ModbusData getModbusData() const;
 private:
@@ -50,6 +51,7 @@ private:
     ModbusData _modbusData;
     std::atomic_uint32_t _counter{0};
     std::atomic_uint8_t _lastEncoded{0};
+    std::atomic_uint16_t _absCounter{0};
     // Мютекс для данных modbus
     mutable std::mutex _mutex;
 };
