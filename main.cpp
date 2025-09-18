@@ -7,7 +7,7 @@
 #include "MessageSender.h"
 #include "HardwareManager.h"
 
-volatile bool running{true};
+std::atomic_bool running{true};
 
 int main()
 {
@@ -21,7 +21,9 @@ int main()
     modbus.start(&hardware);
     MessageSender sender("/dev/serial0");
     sender.start(&hardware);
-    auto sigHandler = [](int) { running = false; };
+    auto sigHandler = [](int) {         
+        running = false; 
+    };
     signal(SIGINT, sigHandler);
     signal(SIGTERM, sigHandler);
     while (running) {        
