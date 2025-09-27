@@ -23,6 +23,7 @@ HardwareManager::HardwareManager(const PinsConfig& config) : _config{config} {
     gpioSetMode(config.duplicateEncZ, PI_INPUT);
     gpioSetPullUpDown(config.duplicateEncZ, PI_PUD_DOWN);
     gpioSetAlertFuncEx(config.duplicateEncZ, HardwareManager::encoderZ_ISR, this);
+    _nulPos = std::max(gpioRead(config.encZ), gpioRead(config.duplicateEncZ));
 }
 
 HardwareManager::~HardwareManager() = default;
@@ -33,7 +34,7 @@ void HardwareManager::setModbusData(const ModbusData &data) {
         _modbusData = data;
         return data.power27V;
     }();    
-    gpioWrite(_config.outPower27V, power27V == 1 ? 0 : 1);
+    gpioWrite(_config.outPower27V, power27V == 0 ? 1 : 0);
 }
 
 void HardwareManager::loadSensorDataPacketTo(SensorDataPacket &data) const {

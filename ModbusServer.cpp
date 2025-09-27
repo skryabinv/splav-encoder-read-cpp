@@ -100,10 +100,7 @@ void ModbusServer::start(HardwareManager* manager) {
     // Начальное значение данных
     auto inputRegs = ModbusRegistersView{1000, _impl->modbusMap->tab_input_registers, _impl->modbusMap->nb_input_registers};
     auto holdingRegs = ModbusRegistersView{2000, _impl->modbusMap->tab_registers, _impl->modbusMap->nb_registers};         
-    auto initialData = manager->getModbusData();
-    // Переделываем в сетевой порядок байтов
-    // inputRegs.writeUint16Litle(FBK_Pos_Count_Max, initialData.posCountMax);
-    // holdingRegs.writeUint16Litle(SP_Pos_Count_Max, initialData.posCountMax);
+    auto initialData = manager->getModbusData();    
     inputRegs.writeUint16(FBK_Pos_Count_Max, initialData.posCountMax);
     holdingRegs.writeUint16(SP_Pos_Count_Max, initialData.posCountMax);
     // Остальные данные запишутся при запросе
@@ -131,7 +128,7 @@ bool ModbusServer::processRequest(const uint8_t* query, size_t querySize, Hardwa
     };
     auto inputRegs = ModbusRegistersView{1000, _impl->modbusMap->tab_input_registers, _impl->modbusMap->nb_input_registers};
     auto holdingRegs = ModbusRegistersView{2000, _impl->modbusMap->tab_registers, _impl->modbusMap->nb_registers};         
-    if(functionCode == MODBUS_FC_WRITE_MULTIPLE_REGISTERS && startAddress == 2000) {  
+    if(functionCode == MODBUS_FC_WRITE_MULTIPLE_REGISTERS || functionCode == MODBUS_FC_WRITE_SINGLE_REGISTER) {
         // Сначала отвечаем чтобы массив изменился
         if(modbus_reply(_impl->modbusCtx, query, querySize, _impl->modbusMap) == -1) {
             return false;
