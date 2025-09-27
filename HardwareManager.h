@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include "Channel5Data.h"
+#include "MessagePackage.h"
 
 #include <atomic>
 #include <mutex>
@@ -20,8 +20,8 @@ struct PinsConfig {
 
 // Здесь все в системном порядке байтов
 struct ModbusData {
-    float angleOffset{};
-    float angleAdj{};
+    float angleOffsetDegrees{};
+    float angleAdjDegrees{};
     uint16_t posCountMax{2500};
     uint16_t status{};
     uint16_t power27V{};
@@ -34,7 +34,7 @@ public:
     // Обновить полученные по modbus конфигурационные значения
     void setModbusData(const ModbusData& data);
     // Обновить данные посылки
-    void loadChannel5DataTo(Channel5Data& data) const;  
+    void loadSensorDataPacketTo(SensorDataPacket& data) const;
     // Получить текущий угол энкодера в радианнах
     float getEncoderAngleRad() const;
     uint16_t getAbsEncoderCounter() const;
@@ -52,6 +52,7 @@ private:
     std::atomic_uint32_t _counter{0};
     std::atomic_uint8_t _lastEncoded{0};
     std::atomic_uint16_t _absCounter{0};
+    std::atomic_uint8_t _nulPos{};
     // Мютекс для данных modbus
     mutable std::mutex _mutex;
 };

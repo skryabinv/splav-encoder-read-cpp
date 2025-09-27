@@ -19,6 +19,8 @@ public:
     void start(HardwareManager* manager);
     // Вызывается из главного потока
     void stop();    
+    // Функция вычисления контрольной суммы
+    static uint16_t computeCRC(const uint8_t* data, size_t length);
 private:    
     void runImpl(std::stop_token stoken, HardwareManager* manager);
     uint16_t controlSum() const;

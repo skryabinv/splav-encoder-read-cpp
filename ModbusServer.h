@@ -17,7 +17,7 @@ public:
     void start(HardwareManager* manager);
     void stop();
 private:    
-    void processRequest(const uint8_t* query, size_t querySize, HardwareManager* manager);
+    bool processRequest(const uint8_t* query, size_t querySize, HardwareManager* manager);
     void runImpl(HardwareManager* manager);
     struct Impl;
     std::unique_ptr<Impl> _impl;

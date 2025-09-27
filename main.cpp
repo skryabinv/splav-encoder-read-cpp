@@ -9,9 +9,7 @@
 
 std::atomic_bool running{true};
 
-int main()
-{
-    const auto PIN = 25;
+int main() {    
     if (gpioInitialise() < 0) {
         std::cerr << "Ошибка инициализации pigpio!\n";
         return 1;

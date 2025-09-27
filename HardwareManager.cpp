@@ -9,7 +9,7 @@ HardwareManager::HardwareManager(const PinsConfig& config) : _config{config} {
 
     gpioSetPullUpDown(config.encA, PI_PUD_UP);
     gpioSetPullUpDown(config.encB, PI_PUD_UP);
-    gpioSetPullUpDown(config.encZ, PI_PUD_UP);
+    gpioSetPullUpDown(config.encZ, PI_PUD_DOWN);
 
     _lastEncoded.store((gpioRead(config.encA) << 1) | gpioRead(config.encB), std::memory_order_relaxed);
     gpioSetAlertFuncEx(config.encA, HardwareManager::encoderA_ISR, this);
@@ -17,6 +17,7 @@ HardwareManager::HardwareManager(const PinsConfig& config) : _config{config} {
     gpioSetAlertFuncEx(config.encZ, HardwareManager::encoderZ_ISR, this);
 
     gpioSetMode(config.outPower27V, PI_OUTPUT);
+    // Вначале отключаем
     gpioWrite(config.outPower27V, 1);
 
     gpioSetMode(config.duplicateEncZ, PI_INPUT);
@@ -32,14 +33,20 @@ void HardwareManager::setModbusData(const ModbusData &data) {
         _modbusData = data;
         return data.power27V;
     }();    
-    gpioWrite(_config.outPower27V, power27V == 0 ? 0 : 1);
+    gpioWrite(_config.outPower27V, power27V == 1 ? 0 : 1);
 }
 
-void HardwareManager::loadChannel5DataTo(Channel5Data &data) const {
+void HardwareManager::loadSensorDataPacketTo(SensorDataPacket &data) const {
+    constexpr float scale = (std::numbers::pi_v<float> / 180.0f) * (1 << 12);    
     auto lock = std::scoped_lock{_mutex};
-    data.roll_angle = getEncoderAngleRadImpl();
-    data.accel_calib_z_70 = std::numbers::pi * _modbusData.angleAdj / 180.0f;    
-    data.bins_state_word = htons(_modbusData.status);    
+    // "КРЕН 0" - Бит 5 (Состояние входа)
+    data.roll_zero = _nulPos.load(std::memory_order_relaxed) << 5;
+    // Угол крена изделия
+    data.angle_roll = getEncoderAngleRadImpl();
+    // Состояние БИНС
+    data.bins_status = 1 << 13;
+    // Угол юстировки "КРЕН 0" (1/2^12 рад)
+    data.alignment_angle_roll_zero = static_cast<int16_t>(_modbusData.angleAdjDegrees * scale);    
 }
 
 float HardwareManager::getEncoderAngleRad() const {        
@@ -77,6 +84,9 @@ void HardwareManager::encoderZ_ISR(int gpio, int level, uint32_t tick, void * us
     if (level == 1) {  
         // Change to High
         static_cast<HardwareManager*>(userdata)->_counter.store(0);  
+        static_cast<HardwareManager*>(userdata)->_nulPos = 1;
+    } else {
+        static_cast<HardwareManager*>(userdata)->_nulPos = 0;
     }
 }
 
@@ -124,6 +134,6 @@ void HardwareManager::processEncoderStep(uint8_t a, uint8_t b) {
 
 float HardwareManager::getEncoderAngleRadImpl() const {
     auto signedCounter = static_cast<int32_t>(getEncoderCounter());    
-    auto offsetRad = std::numbers::pi * _modbusData.angleOffset / 180.0f;    
+    auto offsetRad = std::numbers::pi * _modbusData.angleOffsetDegrees / 180.0f;    
     return offsetRad + 2.0f * std::numbers::pi * signedCounter / _modbusData.posCountMax;  
 }

@@ -7,7 +7,7 @@ find_package(PkgConfig REQUIRED)
 pkg_check_modules(LIBMODBUS REQUIRED libmodbus)
 
 add_executable(splav-encoder-read-cpp main.cpp 
-    Channel5Data.h
+    MessageSender.h
     MessageSender.h MessageSender.cpp
     ModbusServer.h ModbusServer.cpp
     ModbusRegistersView.h

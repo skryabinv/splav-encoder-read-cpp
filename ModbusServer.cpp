@@ -119,46 +119,42 @@ void ModbusServer::stop() {
     }
 }
 
-void ModbusServer::processRequest(const uint8_t * query, size_t querySize, HardwareManager* manager) {
+bool ModbusServer::processRequest(const uint8_t* query, size_t querySize, HardwareManager* manager) {
     auto functionCode = query[7];        
     uint16_t startAddress = (query[8] << 8) | query[9];               
-    uint16_t count = (query[10] << 8) | query[11];              
+    // uint16_t count = (query[10] << 8) | query[11];              
     auto toRadians = [](float degrees) {
-        return std::numbers::pi * degrees / 180.0;
+        return std::numbers::pi_v<float> * degrees / 180.0f;
     };
     auto toDegrees = [](float radians) {
-        return radians / std::numbers::pi * 180.0;
+        return radians / std::numbers::pi_v<float> * 180.0f;
     };
     auto inputRegs = ModbusRegistersView{1000, _impl->modbusMap->tab_input_registers, _impl->modbusMap->nb_input_registers};
     auto holdingRegs = ModbusRegistersView{2000, _impl->modbusMap->tab_registers, _impl->modbusMap->nb_registers};         
-    if(functionCode == MODBUS_FC_WRITE_MULTIPLE_REGISTERS && startAddress == 2000) {
+    if(functionCode == MODBUS_FC_WRITE_MULTIPLE_REGISTERS && startAddress == 2000) {        
         // Обновление входных регистров по данным из holdingRegisters
         inputRegs.writeFloat(FBK_Angle_Adj, toRadians(holdingRegs.readFloat(SP_Angle_Adj)));        
         inputRegs.writeUint16(FBK_Pos_Count_Max, holdingRegs.readUint16(SP_Pos_Count_Max));        
         inputRegs.writeUint16(FBK_Power_27_V, holdingRegs.readUint16(SP_Power_27_V));                
         // Обновить структуру данных в manager (в системном порядке байт)
         ModbusData data;
-        data.angleAdj = holdingRegs.readFloat(SP_Angle_Adj);
-        data.angleOffset = holdingRegs.readFloat(SP_Angle_Offset);        
+        data.angleAdjDegrees = holdingRegs.readFloat(SP_Angle_Adj);
+        data.angleOffsetDegrees = holdingRegs.readFloat(SP_Angle_Offset);        
         // Нулевое значение не должно быть        
         if(auto posCountMax = holdingRegs.readUint16(SP_Pos_Count_Max); posCountMax != 0) {
-        // if(auto posCountMax = holdingRegs.readUint16Litle(SP_Pos_Count_Max); posCountMax != 0) {
             data.posCountMax = posCountMax;            
-        }               
-        // data.power27V = holdingRegs.readUint16Litle(SP_Power_27_V);
-        // data.status = holdingRegs.readUint16Litle(SP_Status);       
+        } 
         data.power27V = holdingRegs.readUint16(SP_Power_27_V);
         data.status = holdingRegs.readUint16(SP_Status);               
         manager->setModbusData(data);
-    } 
-    if(functionCode == MODBUS_FC_READ_INPUT_REGISTERS || functionCode == MODBUS_FC_READ_HOLDING_REGISTERS) {
+    } else if(functionCode == MODBUS_FC_READ_INPUT_REGISTERS) {
         // Обновить счетчик угла
         auto floatRad = manager->getEncoderAngleRad();        
-        // inputRegs.writeUint16Litle(FBK_Pos_Count, manager->getAbsEncoderCounter());
         inputRegs.writeUint16(FBK_Pos_Count, manager->getAbsEncoderCounter());
         inputRegs.writeFloat(FBK_Angle_Roll, floatRad);       
-        inputRegs.writeFloat(FBK_Angle, toDegrees(floatRad));
+        inputRegs.writeFloat(FBK_Angle, toDegrees(floatRad));        
     }
+    return modbus_reply(_impl->modbusCtx, query, querySize, _impl->modbusMap) != -1;
 }
 
 void ModbusServer::runImpl(HardwareManager* manager) {
@@ -206,11 +202,10 @@ void ModbusServer::runImpl(HardwareManager* manager) {
                 break;
             }               
             // Обрабатываем запрос (чтение/запись регистров)
-            if (modbus_reply(_impl->modbusCtx, query, request_length, _impl->modbusMap) == -1) {                
+            if (!processRequest(query, request_length, manager)) {                
                 std::cerr << "Ошибка отправки: " << modbus_strerror(errno) <<  std::endl;
                 break;
-            }
-            processRequest(query, request_length, manager);              
+            }                       
         }
         // Закрываем соединение
         close(clientSocket);        

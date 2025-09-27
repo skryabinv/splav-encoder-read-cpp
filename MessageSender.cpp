@@ -1,5 +1,5 @@
 #include "MessageSender.h"
-#include "Channel5Data.h"
+#include "MessagePackage.h"
 #include "HardwareManager.h"
 
 #include <unistd.h>
@@ -29,7 +29,7 @@ static bool configure_realtime(pthread_t thread_id) {
 
 struct MessageSender::Impl {
     // Порт
-    std::string serial;
+    std::string serial;   
     // Данные
     MessagePackage data{};    
     // Дескриптор
@@ -93,11 +93,28 @@ void MessageSender::stop() {
     }
 }
 
+uint16_t MessageSender::computeCRC(const uint8_t *data, size_t length) {
+    static constexpr uint16_t POLY = 0xA097;
+    static constexpr uint16_t INIT = 0x0000;
+    uint16_t crc = INIT;
+    for (size_t i = 0; i < length; ++i) {
+        crc ^= static_cast<uint16_t>(data[i]) << 8;  // Сдвигаем байт в старшую часть
+        for (int j = 0; j < 8; ++j) {
+            if (crc & 0x8000) {
+                crc = static_cast<uint16_t>((crc << 1) ^ POLY);
+            } else {
+                crc <<= 1;
+            }
+        }
+    }
+    return crc;
+}
+
 void MessageSender::runImpl(std::stop_token stoken, HardwareManager* manager) {    
     configure_realtime(pthread_self());
     while(!stoken.stop_requested()) {            
-        auto t1 = std::chrono::steady_clock::now();          
-        manager->loadChannel5DataTo(_impl->data.data);        
+        auto t1 = std::chrono::steady_clock::now();                      
+        manager->loadSensorDataPacketTo(_impl->data.data);  
         _impl->data.csum = controlSum();
         auto written = write(_impl->sfd, &_impl->data, sizeof(_impl->data));        
         if(written != sizeof(_impl->data)) {
@@ -114,11 +131,7 @@ void MessageSender::runImpl(std::stop_token stoken, HardwareManager* manager) {
 }
 
 uint16_t MessageSender::controlSum() const {
-    constexpr auto size = sizeof(Channel5Data) + 1;
+    constexpr auto size = sizeof(SensorDataPacket) + 1;
     auto ptr = reinterpret_cast<const uint8_t*>(&_impl->data);
-    uint16_t sum = 0;
-    for(int i = 0; i < size; i++) {
-        sum += ptr[i];
-    }
-    return 0xFF - (0xFF & sum);    
+    return computeCRC(ptr, size);    
 }
