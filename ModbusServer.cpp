@@ -131,7 +131,11 @@ bool ModbusServer::processRequest(const uint8_t* query, size_t querySize, Hardwa
     };
     auto inputRegs = ModbusRegistersView{1000, _impl->modbusMap->tab_input_registers, _impl->modbusMap->nb_input_registers};
     auto holdingRegs = ModbusRegistersView{2000, _impl->modbusMap->tab_registers, _impl->modbusMap->nb_registers};         
-    if(functionCode == MODBUS_FC_WRITE_MULTIPLE_REGISTERS && startAddress == 2000) {        
+    if(functionCode == MODBUS_FC_WRITE_MULTIPLE_REGISTERS && startAddress == 2000) {  
+        // Сначала отвечаем чтобы массив изменился
+        if(modbus_reply(_impl->modbusCtx, query, querySize, _impl->modbusMap) == -1) {
+            return false;
+        }   
         // Обновление входных регистров по данным из holdingRegisters
         inputRegs.writeFloat(FBK_Angle_Adj, toRadians(holdingRegs.readFloat(SP_Angle_Adj)));        
         inputRegs.writeUint16(FBK_Pos_Count_Max, holdingRegs.readUint16(SP_Pos_Count_Max));        
@@ -147,14 +151,18 @@ bool ModbusServer::processRequest(const uint8_t* query, size_t querySize, Hardwa
         data.power27V = holdingRegs.readUint16(SP_Power_27_V);
         data.status = holdingRegs.readUint16(SP_Status);               
         manager->setModbusData(data);
-    } else if(functionCode == MODBUS_FC_READ_INPUT_REGISTERS) {
-        // Обновить счетчик угла
-        auto floatRad = manager->getEncoderAngleRad();        
-        inputRegs.writeUint16(FBK_Pos_Count, manager->getAbsEncoderCounter());
-        inputRegs.writeFloat(FBK_Angle_Roll, floatRad);       
-        inputRegs.writeFloat(FBK_Angle, toDegrees(floatRad));        
+    } else {
+        // На чтение и остальные комманды
+        if(functionCode == MODBUS_FC_READ_INPUT_REGISTERS) {
+            // Сначала обновляем массив, потом отвечаем
+            auto floatRad = manager->getEncoderAngleRad();        
+            inputRegs.writeUint16(FBK_Pos_Count, manager->getAbsEncoderCounter());
+            inputRegs.writeFloat(FBK_Angle_Roll, floatRad);       
+            inputRegs.writeFloat(FBK_Angle, toDegrees(floatRad));        
+        }
+        return modbus_reply(_impl->modbusCtx, query, querySize, _impl->modbusMap) != -1;
     }
-    return modbus_reply(_impl->modbusCtx, query, querySize, _impl->modbusMap) != -1;
+    return true;
 }
 
 void ModbusServer::runImpl(HardwareManager* manager) {
