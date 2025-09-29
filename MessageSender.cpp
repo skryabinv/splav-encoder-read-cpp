@@ -131,7 +131,7 @@ void MessageSender::runImpl(std::stop_token stoken, HardwareManager* manager) {
 }
 
 uint16_t MessageSender::controlSum() const {
-    constexpr auto size = sizeof(SensorDataPacket) + 1;
-    auto ptr = reinterpret_cast<const uint8_t*>(&_impl->data);
+    constexpr auto size = sizeof(SensorDataPacket);
+    auto ptr = reinterpret_cast<const uint8_t*>(&_impl->data.data);
     return computeCRC(ptr, size);    
 }
