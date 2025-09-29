@@ -112,7 +112,7 @@ uint16_t MessageSender::computeCRC(const uint8_t *data, size_t length) {
 
 void MessageSender::runImpl(std::stop_token stoken, HardwareManager* manager) {    
     configure_realtime(pthread_self());    
-    manager->enableReceiver();          
+    manager->enableTransmiter();         
     while(!stoken.stop_requested()) {          
         auto t1 = std::chrono::steady_clock::now();                      
         manager->loadSensorDataPacketTo(_impl->data.data);  
@@ -128,8 +128,7 @@ void MessageSender::runImpl(std::stop_token stoken, HardwareManager* manager) {
         } else {
             std::cerr << "Превышено максимальное время отправки" << std::endl;
         }        
-    }    
-    // manager->disableReceiver();    
+    }        
 }
 
 uint16_t MessageSender::controlSum() const {

@@ -21,6 +21,7 @@ HardwareManager::HardwareManager(const PinsConfig& config) : _config{config} {
     gpioWrite(config.outPower27V, 1);
 
     gpioSetMode(config.re485, PI_OUTPUT);    
+    gpioSetMode(config.de485, PI_OUTPUT);    
 
     gpioSetMode(config.duplicateEncZ, PI_INPUT);
     gpioSetPullUpDown(config.duplicateEncZ, PI_PUD_DOWN);
@@ -99,6 +100,14 @@ void HardwareManager::enableReceiver() const {
 
 void HardwareManager::disableReceiver() const {
     gpioWrite(_config.re485, 1);
+}
+
+void HardwareManager::enableTransmiter() const {
+    gpioWrite(_config.de485, 1);
+}
+
+void HardwareManager::disableTransmiter() const {
+    gpioWrite(_config.de485, 0);
 }
 
 void HardwareManager::processEncoderStep(uint8_t a, uint8_t b) {    
