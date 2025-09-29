@@ -41,11 +41,11 @@ void HardwareManager::loadSensorDataPacketTo(SensorDataPacket &data) const {
     constexpr float scale = (std::numbers::pi_v<float> / 180.0f) * (1 << 12);    
     auto lock = std::scoped_lock{_mutex};
     // "КРЕН 0" - Бит 5 (Состояние входа)
-    data.roll_zero = _nulPos.load(std::memory_order_relaxed) << 4;
+    data.roll_zero = _nulPos.load(std::memory_order_relaxed) << 5;
     // Угол крена изделия
     data.angle_roll = getEncoderAngleRadImpl();
     // Состояние БИНС
-    data.bins_status = 1 << 12;
+    data.bins_status = 1 << 13;
     // Угол юстировки "КРЕН 0" (1/2^12 рад)
     data.alignment_angle_roll_zero = static_cast<int16_t>(_modbusData.angleAdjDegrees * scale);    
 }
