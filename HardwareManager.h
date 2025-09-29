@@ -13,6 +13,7 @@ struct PinsConfig {
     uint8_t encA{17};
     uint8_t encB{22};
     uint8_t encZ{27};
+    uint8_t re485{23};
 
     uint8_t outPower27V{25};
     uint8_t duplicateEncZ{13};
@@ -40,6 +41,8 @@ public:
     uint16_t getAbsEncoderCounter() const;
     uint32_t getEncoderCounter() const;
     ModbusData getModbusData() const;
+    void enableReceiver() const;
+    void disableReceiver() const;
 private:
     static void encoderA_ISR(int gpio, int level, uint32_t tick, void *userdata);    
     static void encoderB_ISR(int gpio, int level, uint32_t tick, void *userdata);    

@@ -20,6 +20,8 @@ HardwareManager::HardwareManager(const PinsConfig& config) : _config{config} {
     // Вначале отключаем
     gpioWrite(config.outPower27V, 1);
 
+    gpioSetMode(config.re485, PI_OUTPUT);    
+
     gpioSetMode(config.duplicateEncZ, PI_INPUT);
     gpioSetPullUpDown(config.duplicateEncZ, PI_PUD_DOWN);
     gpioSetAlertFuncEx(config.duplicateEncZ, HardwareManager::encoderZ_ISR, this);
@@ -89,6 +91,14 @@ void HardwareManager::encoderZ_ISR(int gpio, int level, uint32_t tick, void * us
     } else {
         static_cast<HardwareManager*>(userdata)->_nulPos = 0;
     }
+}
+
+void HardwareManager::enableReceiver() const {
+    gpioWrite(_config.re485, 0);
+}
+
+void HardwareManager::disableReceiver() const {
+    gpioWrite(_config.re485, 1);
 }
 
 void HardwareManager::processEncoderStep(uint8_t a, uint8_t b) {    
