@@ -66,7 +66,7 @@ struct MessagePackage {
     uint8_t start = 0x65;
     // Channel5Data data;
     SensorDataPacket data;
-    uint8_t csum;
+    uint16_t csum;
     uint8_t footer[2] = {0x45, 0xCF};
 };
 
