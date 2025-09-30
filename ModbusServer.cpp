@@ -91,7 +91,7 @@ static void initRegisters(ModbusRegistersView inputRegs, ModbusRegistersView hol
     holdingRegs.writeFloat(SP_Angle_Offset, 0.0f);
     holdingRegs.writeFloat(SP_Angle_Adj, 0.0f);
     holdingRegs.writeUint16(SP_Pos_Count_Max, 2'500);
-    holdingRegs.writeUint16(SP_Status, 0);
+    holdingRegs.writeUint16(SP_Status, 0x20C1);
     holdingRegs.writeUint16(SP_Power_27_V, 0);
     syncInputsWithHolding(inputRegs, holdingRegs);    
 }
