@@ -49,6 +49,10 @@ void HardwareManager::loadSensorDataPacketTo(SensorDataPacket &data) const {
     data.angle_roll = getEncoderAngleRadImpl();
     // Состояние БИНС
     data.bins_status = 1 << 13;
+    // Готов
+    data.bins_status |= 1;
+    // Режим работы бинс
+    data.bins_status |= 3 << 8;
     // Угол юстировки "КРЕН 0" (1/2^12 рад)
     data.alignment_angle_roll_zero = static_cast<int16_t>(_modbusData.angleAdjDegrees * scale);    
 }
