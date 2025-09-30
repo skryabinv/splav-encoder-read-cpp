@@ -4,69 +4,143 @@
 
 #pragma pack(push, 1) // Выравнивание по байтам
 
-struct SensorDataPacket {
-    uint32_t time;                    // 0..3: Время, DWORD, 0.003 с
-
-    float gyro_x;                     // 4..7: ДУС X, FLOAT, °/с
-    float gyro_y_rotated;             // 8..11: ДУС Y повернутый, °/с
-    float gyro_z_rotated;             // 12..15: ДУС Z повернутый, °/с
-
-    float accel_x;                    // 16..19: Датчик перегрузки X, м/с²
-    float accel_y_rotated;            // 20..23: Датчик перегрузки Y повернутый, м/с²
-    float accel_z_rotated;            // 24..27: Датчик перегрузки Z повернутый, м/с²
-
-    uint16_t accel_x_70g;             // 28..29: Датчик перегрузки X (70g), WORD, 0.4938 м/с²/е.к.
-    uint8_t roll_zero;                // 30: Бит 5 поля — «Крен 0» (предполагаем, что это 5-й бит байта)            
-
-    float alignment_accel_x_or_pos_x; // 31..34: Результат выставки акселерометра X / Координата X, м
-    float alignment_accel_y_or_pos_y; // 35..38: Результат выставки акселерометра Y / Координата Y, м
-    float alignment_accel_z_or_pos_z; // 39..42: Результат выставки акселерометра Z / Координата Z, м
-
-    float alignment_gyro_x_or_vel_x;  // 43..46: Результат выставки ДУС X / Скорость X, м/с
-    float alignment_gyro_y_or_vel_y;  // 47..50: Результат выставки ДУС Y / Скорость Y, м/с
-    float alignment_gyro_z_or_vel_z;  // 51..54: Результат выставки ДУС Z / Скорость Z, м/с
-
-    float angle_roll;                 // 55..58: Угол крена изделия, рад
-    float angle_pitch;                // 59..62: Угол тангажа изделия, рад
-    float angle_yaw;                  // 63..66: Угол курса изделия, рад
-
-    uint8_t voltage_27v;              // 67: Напряжение питания 27В, BYTE, 0.212 В/е.к.
-    uint8_t voltage_b1_b2;            // 68: Напряжение питания Б1-Б2, 0.212 В/е.к.
-    uint8_t voltage_b3_b5;            // 69: Напряжение питания Б3-Б5, 0.212 В/е.к.
-    uint8_t brp_counter_1;            // 70: Счетчик БРП, е.к.
-    uint8_t brp_angle_set_1;          // 71: Задание угла 1 БРП, 0.125°/е.к.
-    uint8_t brp_angle_set_2;          // 72: Задание угла 2 БРП
-    uint8_t brp_angle_set_3;          // 73: Задание угла 3 БРП
-    uint8_t brp_angle_set_4;          // 74: Задание угла 4 БРП
-    uint8_t brp_angle_current_1;      // 75: Текущий угол 1 БРП
-    uint8_t brp_angle_current_2;      // 76: Текущий угол 2 БРП
-    uint8_t brp_angle_current_3;      // 77: Текущий угол 3 БРП
-    uint8_t brp_angle_current_4;      // 78: Текущий угол 4 БРП
-    uint8_t brp_rudder_current_1;     // 79: Ток руля 1 БРП
-    uint8_t brp_rudder_current_2;     // 80: Ток руля 2 БРП
-    uint8_t brp_rudder_current_3;     // 81: Ток руля 3 БРП
-    uint8_t brp_rudder_current_4;     // 82: Ток руля 4 БРП
-    uint8_t brp_counter_2;            // 83: Счетчик БРП (дублирующий?)
-    uint8_t temperature;              // 84: Температура, е.к.
-    uint8_t barometer;                // 85: Барометр, е.к.
-
-    uint16_t bins_status;             // 86..87: Состояние БИНС, WORD (см. Таблица 2)
-
-    float bna_pos_x;                  // 88..91: Координата Х БНА, м
-    float bna_pos_y;                  // 92..95: Координата Y БНА, м
-    float bna_pos_z;                  // 96..99: Координата Z БНА, м
-    float bna_vel_x;                  // 100..103: Скорость Х БНА, м/с
-    float bna_vel_y;                  // 104..107: Скорость Y БНА, м/с
-    float bna_vel_z;                  // 108..111: Скорость Z БНА, м/с
-
-    int16_t alignment_angle_roll_zero; // 112..113: Угол юстировки «КРЕН 0», м.з.р: 1/212 рад
+struct Channel5Data {       
+    // Байты 1-3: Время
+    uint8_t time[3]; // 0.003 с
+    
+    // Байты 4-7: ДУС X
+    float dus_x; // °/с
+    
+    // Байты 8-11: ДУС Y
+    float dus_y; // °/с
+    
+    // Байты 12-15: ДУС Z
+    float dus_z; // °/с
+    
+    // Байты 16-19: Датчик перегрузки X
+    float acceleration_x; // м/с²
+    
+    // Байты 20-23: Датчик перегрузки Y
+    float acceleration_y; // м/с²
+    
+    // Байты 24-27: Датчик перегрузки Z
+    float acceleration_z; // м/с²
+    
+    // Байты 28-29: Датчик перегрузки X (70g)
+    uint16_t acceleration_x_70g; // 0.4938 м/с²/е.к.
+    
+    // Байт 30: Ошибки датчика
+    uint8_t sensor_errors;
+    
+    // Байт 31: «Крен 0»
+    uint8_t kren_0; // см. таблицу 10.2
+    
+    // Байты 32-35: Результат выставки акселерометра X / Координата X
+    float accel_calib_x_or_coord_x; // м
+    
+    // Байты 36-39: Результат выставки акселерометра Y / Координата Y
+    float accel_calib_y_or_coord_y; // м
+    
+    // Байты 40-43: Результат выставки акселерометра Z / Координата Z
+    float accel_calib_z_or_coord_z; // м
+    
+    // Байты 44-47: Результат выставки ДУС X / Скорость X
+    float dus_calib_x_or_velocity_x; // м/с
+    
+    // Байты 48-51: Результат выставки ДУС Y / Скорость Y
+    float dus_calib_y_or_velocity_y; // м/с
+    
+    // Байты 52-55: Результат выставки ДУС Z / Скорость Z
+    float dus_calib_z_or_velocity_z; // м/с
+    
+    // Байты 56-59: Угол крена изделия
+    float roll_angle; // рад
+    
+    // Байты 60-63: Угол тангажа изделия
+    float pitch_angle; // рад
+    
+    // Байты 64-67: Угол курса изделия
+    float yaw_angle; // рад
+    
+    // Байт 68: Напряжение питания 27В
+    uint8_t voltage_27v; // 0.212 В/е.к.
+    
+    // Байт 69: Напряжение питания Б1-Б2
+    uint8_t voltage_b1_b2; // 0.212 В/е.к.
+    
+    // Байт 70: Напряжение питания Б3-Б5
+    uint8_t voltage_b3_b5; // 0.212 В/е.к.
+    
+    // Байт 71: Счетчик БРП
+    uint8_t brp_counter;
+    
+    // Байт 72: Задание угла 1 БРП
+    uint8_t brp_angle_command_1; // 0.125°/е.к.
+    
+    // Байт 73: Задание угла 2 БРП
+    uint8_t brp_angle_command_2; // 0.125°/е.к.
+    
+    // Байт 74: Текущий угол 1 БРП
+    uint8_t brp_current_angle_1; // 0.125°/е.к.
+    
+    // Байт 75: Текущий угол 2 БРП
+    uint8_t brp_current_angle_2; // 0.125°/е.к.
+    
+    // Байт 76: Ток руля 1 БРП
+    uint8_t brp_current_1;
+    
+    // Байт 77: Ток руля 2 БРП
+    uint8_t brp_current_2;
+    
+    // Байт 78: Счетчик БРП (дублирование?)
+    uint8_t brp_counter_2;
+    
+    // Байт 79: Температура
+    uint8_t temperature;
+    
+    // Байт 80: Барометр
+    uint8_t barometer;
+    
+    // Байты 81-82: Слово состояния БИНС
+    uint16_t bins_state_word; // Таблица 8.3
+    
+    // Байты 83-84: Задание привода БИНС
+    uint16_t bins_drive_command;
+    
+    // Байты 85-86: ДУС изделия
+    uint16_t product_dus;
+    
+    // Байты 87-88: Угол двигателя БИНС
+    uint16_t bins_motor_angle;
+    
+    // Байты 89-92: Результат выставки акселерометра Z 70
+    float accel_calib_z_70; // М
+    
+    // Байты 93-96: Координата X БНА
+    float bna_coord_x; // М
+    
+    // Байты 97-100: Координата Y БНА
+    float bna_coord_y; // М
+    
+    // Байты 101-104: Координата Z БНА
+    float bna_coord_z; // М
+    
+    // Байты 105-108: Скорость X БНА
+    float bna_velocity_x; // м/с
+    
+    // Байты 109-112: Скорость Y БНА
+    float bna_velocity_y; // м/с
+    
+    // Байты 113-116: Скорость Z БНА
+    float bna_velocity_z; // м/с
+    
+    // Контрольная сумма и окончание (0x45, 0xCF) - не входят в DATA
 };
 
 struct MessagePackage {        
     uint8_t start = 0x65;
-    // Channel5Data data;
-    SensorDataPacket data;
-    uint16_t csum;
+    Channel5Data data;    
+    uint8_t csum;
     uint8_t footer[2] = {0x45, 0xCF};
 };
 

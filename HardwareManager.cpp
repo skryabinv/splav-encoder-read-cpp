@@ -40,17 +40,26 @@ void HardwareManager::setModbusData(const ModbusData &data) {
     gpioWrite(_config.outPower27V, power27V == 0 ? 1 : 0);
 }
 
-void HardwareManager::loadSensorDataPacketTo(SensorDataPacket &data) const {
-    constexpr float scale = (std::numbers::pi_v<float> / 180.0f) * (1 << 12);    
+// void HardwareManager::loadSensorDataPacketTo(SensorDataPacket &data) const {
+//     constexpr float scale = (std::numbers::pi_v<float> / 180.0f) * (1 << 12);    
+//     auto lock = std::scoped_lock{_mutex};
+//     // "КРЕН 0" - Бит 5 (Состояние входа)
+//     data.roll_zero = _nulPos.load(std::memory_order_relaxed) << 5;
+//     // Угол крена изделия
+//     data.angle_roll = getEncoderAngleRadImpl();
+//     // Состояние БИНС
+//     data.bins_status = 1 << 13;
+//     // Угол юстировки "КРЕН 0" (1/2^12 рад)
+//     data.alignment_angle_roll_zero = static_cast<int16_t>(_modbusData.angleAdjDegrees * scale);    
+// }
+
+void HardwareManager::loadChannel5DataTo(Channel5Data &data) const {
     auto lock = std::scoped_lock{_mutex};
-    // "КРЕН 0" - Бит 5 (Состояние входа)
-    data.roll_zero = _nulPos.load(std::memory_order_relaxed) << 5;
-    // Угол крена изделия
-    data.angle_roll = getEncoderAngleRadImpl();
-    // Состояние БИНС
-    data.bins_status = 1 << 13;
-    // Угол юстировки "КРЕН 0" (1/2^12 рад)
-    data.alignment_angle_roll_zero = static_cast<int16_t>(_modbusData.angleAdjDegrees * scale);    
+    data.kren_0 = _nulPos.load(std::memory_order_relaxed) << 5;
+    data.roll_angle = getEncoderAngleRadImpl();
+    data.accel_calib_z_70 = std::numbers::pi_v<float> * _modbusData.angleAdjDegrees / 180.0f;    
+    // Статус 1 или управляется по модбасу?
+    data.bins_state_word = _modbusData.status;    
 }
 
 float HardwareManager::getEncoderAngleRad() const {        

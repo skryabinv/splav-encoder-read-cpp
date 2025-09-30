@@ -115,7 +115,7 @@ void MessageSender::runImpl(std::stop_token stoken, HardwareManager* manager) {
     manager->enableTransmiter();         
     while(!stoken.stop_requested()) {          
         auto t1 = std::chrono::steady_clock::now();                      
-        manager->loadSensorDataPacketTo(_impl->data.data);  
+        manager->loadChannel5DataTo(_impl->data.data);
         _impl->data.csum = controlSum();
         auto written = write(_impl->sfd, &_impl->data, sizeof(_impl->data));        
         if(written != sizeof(_impl->data)) {
@@ -131,8 +131,13 @@ void MessageSender::runImpl(std::stop_token stoken, HardwareManager* manager) {
     }        
 }
 
-uint16_t MessageSender::controlSum() const {
-    constexpr auto size = sizeof(SensorDataPacket);
-    auto ptr = reinterpret_cast<const uint8_t*>(&_impl->data.data);
-    return computeCRC(ptr, size);    
+uint8_t MessageSender::controlSum() const {    
+    // Берем вместе с первым байтом
+    constexpr auto size = sizeof(Channel5Data) + 1;
+    auto ptr = reinterpret_cast<const uint8_t*>(&_impl->data);
+    uint8_t sum = 0;
+    for(int i = 0; i < size; i++) {
+        sum += ptr[i];
+    }
+    return 0xFF - (0xFF & sum);      
 }

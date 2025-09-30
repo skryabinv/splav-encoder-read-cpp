@@ -34,9 +34,9 @@ public:
     HardwareManager(const PinsConfig& config);
     ~HardwareManager();
     // Обновить полученные по modbus конфигурационные значения
-    void setModbusData(const ModbusData& data);
+    void setModbusData(const ModbusData& data);    
     // Обновить данные посылки
-    void loadSensorDataPacketTo(SensorDataPacket& data) const;
+    void loadChannel5DataTo(Channel5Data& data) const;  
     // Получить текущий угол энкодера в радианнах
     float getEncoderAngleRad() const;
     uint16_t getAbsEncoderCounter() const;
