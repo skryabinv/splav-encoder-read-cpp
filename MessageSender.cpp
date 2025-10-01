@@ -116,9 +116,9 @@ void MessageSender::runImpl(std::stop_token stoken, HardwareManager* manager) {
     manager->enableTransmiter();         
     while(!stoken.stop_requested()) {          
         auto t1 = std::chrono::steady_clock::now();                      
-        manager->loadSensorDataPacketTo(_impl->data.data);  
-        _impl->data.csum = controlSum();
+        manager->loadSensorDataPacketTo(_impl->data.data);          
         _impl->data.data.time = ++_impl->time;
+        _impl->data.csum = controlSum();
         auto written = write(_impl->sfd, &_impl->data, sizeof(_impl->data));        
         if(written != sizeof(_impl->data)) {
             std::cerr << "Ошибка записи в последовательный порт: " << written << std::endl;
