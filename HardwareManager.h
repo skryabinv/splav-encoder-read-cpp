@@ -57,6 +57,8 @@ private:
     std::atomic_uint16_t _counter{0};
     std::atomic_uint8_t _lastEncoded{0};    
     std::atomic_uint8_t _nulPos{};
+    std::atomic<float> _angleDeltaDeg{0.0f};
+    std::atomic<float> _angleDeg{0.0f};
     // Мютекс для данных modbus
     mutable std::mutex _mutex;
 };

@@ -35,6 +35,9 @@ void HardwareManager::setModbusData(const ModbusData &data) {
     auto power27V = [this, &data]{
         auto lock = std::scoped_lock{_mutex};
         _modbusData = data;
+        if(_modbusData.posCountMax != 0) { 
+            _angleDeltaDeg = 360.0f / _modbusData.posCountMax;
+        }
         return data.power27V;
     }();    
     gpioWrite(_config.outPower27V, power27V == 0 ? 1 : 0);
@@ -84,6 +87,7 @@ void HardwareManager::encoderZ_ISR(int gpio, int level, uint32_t tick, void * us
     if (level == 1) {  
         // Change to High
         static_cast<HardwareManager*>(userdata)->_counter.store(0);  
+        static_cast<HardwareManager*>(userdata)->_angleDeg.store(0.0f);
         static_cast<HardwareManager*>(userdata)->_nulPos = 1;
     } else {
         static_cast<HardwareManager*>(userdata)->_nulPos = 0;
@@ -142,14 +146,13 @@ void HardwareManager::processEncoderStep(uint8_t a, uint8_t b) {
     int8_t delta = transitions[sum];  
     if (delta != 0) {         
         _counter.fetch_add(delta, std::memory_order_relaxed);
+        _angleDeg.fetch_add(delta * _angleDeltaDeg, std::memory_order_relaxed);
     } 
     // Сохраняем текущее состояние
-    _lastEncoded.store(current, std::memory_order_relaxed);
-    // _absCounter.fetch_add(1, std::memory_order_relaxed);
+    _lastEncoded.store(current, std::memory_order_relaxed);    
 }
 
-float HardwareManager::getEncoderAngleRadImpl() const {
-    auto signedCounter = static_cast<int32_t>(getEncoderCounter());    
-    auto offsetRad = std::numbers::pi * _modbusData.angleOffsetDegrees / 180.0f;    
-    return offsetRad + 2.0f * std::numbers::pi * signedCounter / _modbusData.posCountMax;  
+float HardwareManager::getEncoderAngleRadImpl() const {        
+    // Здесь без блокировки - внутренняя функция
+    return std::numbers::pi_v<float> * (_modbusData.angleOffsetDegrees + _angleDeg) / 180.0f;  
 }
