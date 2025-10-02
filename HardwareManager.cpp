@@ -49,7 +49,7 @@ void HardwareManager::loadSensorDataPacketTo(SensorDataPacket &data) const {
     // "КРЕН 0" - Бит 5 (Состояние входа)
     data.roll_zero = _nulPos.load(std::memory_order_relaxed) << 5;
     // Угол крена изделия
-    data.angle_roll = getEncoderAngleRadImpl();
+    data.angle_roll = 2.0f * std::numbers::pi_v<float> - getEncoderAngleRadImpl();
     // Состояние БИНС
     data.bins_status = _modbusData.status;    
     // Угол юстировки "КРЕН 0" (1/2^12 рад)
