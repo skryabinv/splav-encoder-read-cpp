@@ -172,7 +172,7 @@ bool ModbusServer::processRequest(const uint8_t* query, size_t querySize, Hardwa
         if(functionCode == MODBUS_FC_READ_INPUT_REGISTERS) {
             // Сначала обновляем массив, потом отвечаем
             auto floatRad = manager->getEncoderAngleRad();        
-            inputRegs.writeUint16(FBK_Pos_Count, manager->getAbsEncoderCounter());
+            inputRegs.writeUint16(FBK_Pos_Count, manager->getEncoderCounter());
             inputRegs.writeFloat(FBK_Angle_Roll, floatRad);       
             inputRegs.writeFloat(FBK_Angle, toDegrees(floatRad));        
         }

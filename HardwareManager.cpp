@@ -58,11 +58,7 @@ float HardwareManager::getEncoderAngleRad() const {
     return getEncoderAngleRadImpl();
 }
 
-uint16_t HardwareManager::getAbsEncoderCounter() const {
-    return _absCounter.load(std::memory_order_relaxed);
-}
-
-uint32_t HardwareManager::getEncoderCounter() const {
+uint16_t HardwareManager::getEncoderCounter() const {
     return _counter.load(std::memory_order_relaxed);
 }
 
@@ -149,7 +145,7 @@ void HardwareManager::processEncoderStep(uint8_t a, uint8_t b) {
     } 
     // Сохраняем текущее состояние
     _lastEncoded.store(current, std::memory_order_relaxed);
-    _absCounter.fetch_add(1, std::memory_order_relaxed);
+    // _absCounter.fetch_add(1, std::memory_order_relaxed);
 }
 
 float HardwareManager::getEncoderAngleRadImpl() const {

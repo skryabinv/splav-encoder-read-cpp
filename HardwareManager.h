@@ -38,9 +38,8 @@ public:
     // Обновить данные посылки
     void loadSensorDataPacketTo(SensorDataPacket& data) const;
     // Получить текущий угол энкодера в радианнах
-    float getEncoderAngleRad() const;
-    uint16_t getAbsEncoderCounter() const;
-    uint32_t getEncoderCounter() const;
+    float getEncoderAngleRad() const;    
+    uint16_t getEncoderCounter() const;
     ModbusData getModbusData() const;
     void enableReceiver() const;
     void disableReceiver() const;
@@ -55,9 +54,8 @@ private:
     float getEncoderAngleRadImpl() const;
     PinsConfig _config;
     ModbusData _modbusData;
-    std::atomic_uint32_t _counter{0};
-    std::atomic_uint8_t _lastEncoded{0};
-    std::atomic_uint16_t _absCounter{0};
+    std::atomic_uint16_t _counter{0};
+    std::atomic_uint8_t _lastEncoded{0};    
     std::atomic_uint8_t _nulPos{};
     // Мютекс для данных modbus
     mutable std::mutex _mutex;
