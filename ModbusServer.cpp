@@ -70,7 +70,7 @@ static void syncInputsWithHolding(ModbusRegistersView inputRegs, const ModbusReg
     // Обновление входных регистров по данным из holdingRegisters
     inputRegs.writeFloat(FBK_Angle_Adj, toRadians(holdingRegs.readFloat(SP_Angle_Adj)));        
     inputRegs.writeUint16(FBK_Pos_Count_Max, holdingRegs.readUint16(SP_Pos_Count_Max));        
-    inputRegs.writeUint16(FBK_Power_27_V, holdingRegs.readUint16(SP_Power_27_V));   
+    inputRegs.writeUint16(FBK_Power_27_V, holdingRegs.readUint16(SP_Power_27_V) == 0 ? 1 : 0);   
 }
 
 static ModbusData makeModbusData(const ModbusRegistersView holdingRegs) {
@@ -90,7 +90,7 @@ static void initRegisters(ModbusRegistersView inputRegs, ModbusRegistersView hol
     // Заполняем начальными значениями
     holdingRegs.writeFloat(SP_Angle_Offset, 0.0f);
     holdingRegs.writeFloat(SP_Angle_Adj, 0.0f);
-    holdingRegs.writeUint16(SP_Pos_Count_Max, 2'500);
+    holdingRegs.writeUint16(SP_Pos_Count_Max, 10'000);
     holdingRegs.writeUint16(SP_Status, 0x20C1);
     holdingRegs.writeUint16(SP_Power_27_V, 0);
     syncInputsWithHolding(inputRegs, holdingRegs);    
